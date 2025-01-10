@@ -10,8 +10,6 @@ outputs:
 runs:
   using: "composite"
   steps:
-    env:
-      PAT: ${{ secrets.PAT }}
     - name: Get org and component IDs from workflow
       id: orgcomp
       uses: docker://figured/alpine-curl-jq-bash
