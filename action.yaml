@@ -51,5 +51,5 @@ runs:
             MANIFEST=$(echo "$MANIFEST" | jq -c '.[]' | jq -c -s --argjson b "${manifest_entry}" '.[. | length] = $b')
           done
         done
-        echo "$MANIFEST" | tee manifest_template.yaml
-        echo "$MANIFEST" > "$CLOUDBEES_OUTPUTS/manifest_template"
+        echo "$MANIFEST" | tee base-manifest.yaml
+        echo "$MANIFEST" > "$CLOUDBEES_OUTPUTS/base-manifest"
