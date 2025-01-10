@@ -1,6 +1,6 @@
 apiVersion: automation.cloudbees.io/v1alpha1
 kind: action
-name: Create manifest from latest artifact version in current organization
+name: Create manifest from latest artifact version in current org
 inputs:
   workflowId:
     required: true
