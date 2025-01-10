@@ -6,6 +6,7 @@ inputs:
     required: true
 outputs:
   base-manifest: ${{ steps.manifest.manifest-template }}
+  required: true
   
 runs:
   using: "composite"
@@ -22,32 +23,32 @@ runs:
         echo "$RESPONSE" | jq -c -r '.parents[] | select(.type=="RESOURCE_TYPE_ORGANIZATION") | .id' | head -1 | tr -d '\n' > "$CLOUDBEES_OUTPUTS/orgId"
         echo "$RESPONSE" | jq -c -r '.parents[] | select(.type=="RESOURCE_TYPE_REPOSITORY") | .id' | tr -d '\n' > "$CLOUDBEES_OUTPUTS/componentId"
         echo "resources/$(cat $CLOUDBEES_OUTPUTS/orgId)/services/$(cat $CLOUDBEES_OUTPUTS/componentId)"
-      - name: Get component IDs from the application
-        id: components
-        uses: docker://figured/alpine-curl-jq-bash
-        shell: bash
-        run: |
-          echo curl -X 'GET' ${CLOUDBEES_API_URL}/v1/resources/${{ steps.orgcomp.outputs.orgId}}/services/${{ steps.orgcomp.outputs.componentId}}    --header 'Content-Type: application/json'       --header "Authorization: Bearer $PAT"
-          curl -X 'GET' ${CLOUDBEES_API_URL}/v1/resources/${{ steps.orgcomp.outputs.orgId}}/services/${{ steps.orgcomp.outputs.componentId}}    --header 'Content-Type: application/json'       --header "Authorization: Bearer $PAT"
-          COMPONENT_IDS="$(curl -X 'GET' ${CLOUDBEES_API_URL}/v1/resources/${{ steps.orgcomp.outputs.orgId}}/services/${{ steps.orgcomp.outputs.componentId}}    --header 'Content-Type: application/json'       --header "Authorization: Bearer $PAT" | jq -r '.service.linkedComponentIds[]')"
-          echo $COMPONENT_IDS > "$CLOUDBEES_OUTPUTS/componentIds"             
-      - name: Create manifest
-        id: manifest
-        uses: docker://figured/alpine-curl-jq-bash
-        shell: bash
-        run: |
-          COMPONENT_IDS="${{ steps.components.outputs.componentIds }}"
-          MANIFEST="[]" # workflow-dispatch action input
-          for COMPONENT_ID in $COMPONENT_IDS
-          do 
-            artifacts=$(curl -X 'GET' ${CLOUDBEES_API_URL}/v2/resources/$COMPONENT_ID/artifactinfos?filter.latestOnly=true    --header 'Content-Type: application/json'       --header "Authorization: Bearer $PAT" | jq -c '.artifacts[]')
-            # Process each artifact
-            for artifact in $artifacts;
-            do
-              manifest_entry=$(echo "$artifact" |\
-              jq -c '{component_id: .resourceId, branch_name: "main", workflow_file_name: "deploy.yaml", inputs: {artifactName: .name, artifactVersion: .version, url: .url, digest: .digest} }' )
-              MANIFEST=$(echo "$MANIFEST" | jq -c '.[]' | jq -c -s --argjson b "${manifest_entry}" '.[. | length] = $b')
-            done
+    - name: Get component IDs from the application
+      id: components
+      uses: docker://figured/alpine-curl-jq-bash
+      shell: bash
+      run: |
+        echo curl -X 'GET' ${CLOUDBEES_API_URL}/v1/resources/${{ steps.orgcomp.outputs.orgId}}/services/${{ steps.orgcomp.outputs.componentId}}    --header 'Content-Type: application/json'       --header "Authorization: Bearer $PAT"
+        curl -X 'GET' ${CLOUDBEES_API_URL}/v1/resources/${{ steps.orgcomp.outputs.orgId}}/services/${{ steps.orgcomp.outputs.componentId}}    --header 'Content-Type: application/json'       --header "Authorization: Bearer $PAT"
+        COMPONENT_IDS="$(curl -X 'GET' ${CLOUDBEES_API_URL}/v1/resources/${{ steps.orgcomp.outputs.orgId}}/services/${{ steps.orgcomp.outputs.componentId}}    --header 'Content-Type: application/json'       --header "Authorization: Bearer $PAT" | jq -r '.service.linkedComponentIds[]')"
+        echo $COMPONENT_IDS > "$CLOUDBEES_OUTPUTS/componentIds"             
+    - name: Create manifest
+      id: manifest
+      uses: docker://figured/alpine-curl-jq-bash
+      shell: bash
+      run: |
+        COMPONENT_IDS="${{ steps.components.outputs.componentIds }}"
+        MANIFEST="[]" # workflow-dispatch action input
+        for COMPONENT_ID in $COMPONENT_IDS
+        do 
+          artifacts=$(curl -X 'GET' ${CLOUDBEES_API_URL}/v2/resources/$COMPONENT_ID/artifactinfos?filter.latestOnly=true    --header 'Content-Type: application/json'       --header "Authorization: Bearer $PAT" | jq -c '.artifacts[]')
+          # Process each artifact
+          for artifact in $artifacts;
+          do
+            manifest_entry=$(echo "$artifact" |\
+            jq -c '{component_id: .resourceId, branch_name: "main", workflow_file_name: "deploy.yaml", inputs: {artifactName: .name, artifactVersion: .version, url: .url, digest: .digest} }' )
+            MANIFEST=$(echo "$MANIFEST" | jq -c '.[]' | jq -c -s --argjson b "${manifest_entry}" '.[. | length] = $b')
           done
-          echo "$MANIFEST" | tee manifest_template.yaml
-          echo "$MANIFEST" > "$CLOUDBEES_OUTPUTS/manifest_template"
+        done
+        echo "$MANIFEST" | tee manifest_template.yaml
+        echo "$MANIFEST" > "$CLOUDBEES_OUTPUTS/manifest_template"
