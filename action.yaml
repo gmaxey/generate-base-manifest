@@ -5,8 +5,9 @@ inputs:
   workflowId:
     required: true
 outputs:
-  base-manifest: ${{ steps.manifest.manifest-template }}
-  required: true
+  base-manifest:
+    value: ${{ steps.manifest.manifest-template }}
+    description: JSON manifest without environment
   
 runs:
   using: "composite"
