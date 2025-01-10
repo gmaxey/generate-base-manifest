@@ -6,7 +6,7 @@ inputs:
     required: true
 outputs:
   base-manifest:
-    value: ${{ steps.manifest.manifest-template }}
+    value: ${{ steps.manifest.outputs.manifest-template }}
     description: JSON manifest without environment
   
 runs:
